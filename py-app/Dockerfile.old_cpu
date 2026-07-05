@@ -1,0 +1,62 @@
+﻿
+FROM python:3.14.4-slim
+
+# install cron
+# RUN apt-get update && apt-get install -y cron && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    gfortran \
+    build-essential \
+    python3-dev \
+    libopenblas-dev \
+    liblapack-dev \
+    pkg-config \
+    cron \
+    dos2unix \
+    && rm -rf /var/lib/apt/lists/*
+
+
+ENV NPY_DISABLE_SLVM=1
+ENV NPY_DISABLE_AVX512=1
+ENV NPY_DISABLE_AVX2=1
+ENV NPY_DISABLE_AVX=1
+ENV NPY_DISABLE_X86_V2=1
+ENV CFLAGS="-O2 -march=x86-64"
+ENV CXXFLAGS="-O2 -march=x86-64"
+ENV NPY_DISTUTILS_APPEND_FLAGS=1
+
+# COPY python-cron /etc/cron.d/python-cron
+COPY crontab /etc/cron.d/python-cron
+
+RUN dos2unix /etc/cron.d/python-cron \
+    && chmod 0644 /etc/cron.d/python-cron \
+    && crontab /etc/cron.d/python-cron
+
+WORKDIR /app 
+# /usr/src/app
+
+COPY requirements.txt ./
+# RUN pip install --no-cache-dir --no-binary numpy numpy==1.23.5
+# RUN pip install --no-cache-dir numpy==1.23.5
+# RUN pip install --no-cache-dir --no-binary numpy numpy==2.0.2
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN pip install --no-cache-dir --no-binary numpy \
+    --config-settings=setup-args="-Dcpu-baseline=\"none\"" numpy==2.3.3
+
+COPY . .
+
+# set schedule
+# COPY crontab /etc/cron.d/python-cron
+# RUN chmod 0644 /etc/cron.d/python-cron && crontab /etc/cron.d/python-cron
+RUN touch /var/log/cron.log
+
+RUN dos2unix /app/entrypoint.sh  \
+    && chmod +x /app/entrypoint.sh
+
+# CMD ["/app/entrypoint.sh"]
+# CMD cron && tail -f /var/log/cron.log  # CMD ["cron", "-f"]
+# CMD [ "python", "./main.py" ]

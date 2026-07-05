@@ -1,0 +1,22 @@
+﻿# PostgreSQL настройки
+POSTGRES_USER=<имя администратора БД>
+POSTGRES_PASSWORD=<пароль администратора БД>
+POSTGRES_PORT=15432  # порт postgreSQL для подключения к БД снаружи контейнера
+POSTGRES_HOST=localhost   # не меняем 
+
+# python app
+APP_HOST=postgres # <-- имя хоста (из docker compose) при подключении psycopg2
+APP_USER=<имя пользователя для работы с БД с данными продаж>
+APP_USER_PASSWORD=<пароль пользователя для работы с БД с данными продаж>
+APP_DB=ecom #<имя БД с данными продаж>
+DB_SCHEMA=ecom #<схема для БД с данными продаж>
+
+# Metabase настройки
+METABASE_DB=<имя БД для metabase>
+METABASE_PORT=13000  # порт metabase для подключения снаружи контейнера
+
+# Python приложение
+LOG_LEVEL=INFO 
+LOG_DAYS=30
+API_URL=http://final-project.simulative.ru/data
+

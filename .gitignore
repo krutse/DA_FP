@@ -1,0 +1,21 @@
+﻿# Не коммитим реальные .env файлы с секретами
+.env
+.env.local
+.env.*.local
+.venv
+
+__pycache__/
+*.pyc
+
+# Логи
+logs/
+*.log
+
+# Данные volumes
+postgres_data/
+metabase_plugins/
+
+temp/
+prj/
+
+inf.txt
