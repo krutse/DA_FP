@@ -1,6 +1,7 @@
 ﻿from .log import *
 import requests, json
 import pandas as pd
+import datetime as dt
 
 
 # get raw api data
@@ -11,9 +12,9 @@ def get_data(url,params):
         rsp.raise_for_status() 
         return rsp #.json()
     except requests.exceptions.HTTPError as err:
-        logger.error(f"Произошла HTTP ошибка: {err}")    
+        logging.error(f"Произошла HTTP ошибка: {err}")    
     except Exception as err:
-        logger.error(f"Другая ошибка: {err}")    
+        logging.error(f"Другая ошибка: {err}")    
 
 # выгрузка данных в dataframe
 def last_data(url, today = dt.datetime.now() ):
@@ -28,4 +29,4 @@ def last_data(url, today = dt.datetime.now() ):
         else:
             return False
     else:
-        logger.error("Ошибка получения данных")      
+        logging.error("Ошибка получения данных")      
