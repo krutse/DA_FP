@@ -4,12 +4,13 @@ from logging.handlers import QueueHandler, RotatingFileHandler
 import queue
 import time
 from psycopg_pool import AsyncConnectionPool 
+from pathlib import Path
 
 class AsyncSplitLogger:   # AsyncPsycopgDBLogger
     def __init__(
         self,
         db_pool,
-        file_path="fatalerror.log",
+        file_path="log/fatalerror.log",
         db_logger_name="db_logger",
         file_logger_name="file_logger",
         batch_size=10,
@@ -35,6 +36,9 @@ class AsyncSplitLogger:   # AsyncPsycopgDBLogger
         self._file_logger.setLevel(logging.INFO)
         if self._file_logger.hasHandlers():
             self._file_logger.handlers.clear()
+        
+        log_file = Path(file_path)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
 
         file_formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
         file_handler = RotatingFileHandler(file_path, maxBytes=5*1024*1024, backupCount=3, encoding="utf-8")

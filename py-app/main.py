@@ -14,6 +14,14 @@ import psycopg
 logger = logging.getLogger("BatchLogger")
 file_log = logging.getLogger("file_logger")
 
+
+def get_loop_factory():
+    # На Windows принудительно включаем SelectorEventLoop
+    if sys.platform == "win32":
+        return lambda: asyncio.SelectorEventLoop(selectors.SelectSelector())
+    # На Linux/macOS возвращаем None (Python сам выберет epoll/kqueue)
+    return None
+
 # MAIN 
 # ===============================================================================
 
@@ -116,5 +124,5 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main(), loop_factory=lambda: asyncio.SelectorEventLoop(selectors.SelectSelector()))
-
+#    asyncio.run(main(), loop_factory=lambda: asyncio.SelectorEventLoop(selectors.SelectSelector()))
+    asyncio.run(main(), loop_factory=get_loop_factory())

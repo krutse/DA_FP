@@ -35,7 +35,7 @@ services:
     healthcheck:
 #      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d postgres"]
 #      test: ["CMD-SHELL", "pg_isready -U admin -d postgres && [ -n \"$(env | grep _POSTGRES_INIT_COMPLETED)\" ]"]
-      test: ["CMD-SHELL", "pg_isready -U admin -d postgres && [ -f /tmp/init_done ]"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d postgres && [ -f /var/lib/postgresql/data/init_done ]"]
       interval: 10s
       timeout: 5s
       retries: 100
