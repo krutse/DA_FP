@@ -75,6 +75,7 @@ async def main():
     curdate = dt.datetime.now()
     dt_delta = dt.timedelta(days=1)
     df_list = []
+    err_cnt = 0
     if  last_date == dt.datetime(1970, 1, 1).date(): 
         logger.info('Начальное заполнение данными')
         filldata = True
@@ -88,7 +89,13 @@ async def main():
                     logger.info(f'начало записи данных в БД за {curdate.strftime('%Y-%m-%d')}')
                     await db_mgr.write_data(cur_df)
             else:    
-                filldata = False
+                if cur_df == 'Информация за более ранние периоды отсутствует':
+                    filldata = False
+                else: # считаем ошибки
+                    err_cnt += 1
+                    if err_cnt > 10:
+                        filldata = False
+
             curdate -= dt_delta    
     else:
         # заполняем данными за прошлый день

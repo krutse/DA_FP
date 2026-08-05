@@ -1,0 +1,5 @@
+﻿HOST: localhost #"192.168.8.116"
+PORT: 15432
+DATABASE: ecom
+USER: tst_user1 # "user1"
+PASSWORD: '123'   # "user1"

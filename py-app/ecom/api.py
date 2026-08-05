@@ -1,8 +1,11 @@
-﻿from .log import *
+﻿#from .log import *
 import requests, json
 import pandas as pd
 import datetime as dt
+import logging
 
+logger = logging.getLogger('BatchLogger')  
+file_log = logging.getLogger("file_logger")
 
 # get raw api data
 # запрос выдает данные за дату в params.
@@ -27,6 +30,6 @@ def last_data(url, today = dt.datetime.now() ):
             df = pd.json_normalize(rsp.json())
             return df
         else:
-            return False
+            return rsp.text #False
     else:
         logging.error("Ошибка получения данных")      
