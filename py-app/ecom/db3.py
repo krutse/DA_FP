@@ -2,16 +2,20 @@ import asyncio
 import os
 from datetime import datetime
 import psycopg
+from psycopg.rows import scalar_row
 from psycopg_pool import AsyncConnectionPool  
 import logging
 
-logger = logging.getLogger('BatchLogger')  
-file_log = logging.getLogger("file_logger")
+# logger = logging.getLogger('BatchLogger')  
+# file_log = logging.getLogger("file_logger")
 
 # Если логгер не настроен, создаем базовый
-if not logger.handlers:
-    logging.basicConfig(level=logging.ERROR)
-    logger = logging.getLogger('BatchLogger')
+#if not logger.handlers:
+#    logging.basicConfig(level=logging.ERROR)
+#    logger = logging.getLogger('BatchLogger')
+
+# db_logger_name=""
+logger = logging.getLogger(__name__)
 
 # Пул соединений к БД (Асинхронный синглтон)
 class DatabaseManager:
@@ -112,6 +116,29 @@ class DatabaseManager:
         except Exception as err:
             logger.error(f"Ошибка соединения check_table_data: {err}")     
             res = None   
+        return res
+
+    # Список пропущенных дат
+    async def missing_dates(self, min_date):
+        sql = f"""
+            with full_dt_list as (
+	        select dt::date as calendar_date
+	        from generate_series('{min_date}'::date, (now() - interval '1 day')::date, '1 day'::interval ) dt
+            )
+            select fl.calendar_date 
+            from full_dt_list fl 
+            left join ecom.v_calendar vc on vc.calendar_date = fl.calendar_date 
+            where vc.calendar_date is null
+        """
+        try:
+            async with self._pool.connection() as conn:  #
+                async with conn.cursor(row_factory=scalar_row) as c:    # row_factory для плоского списка 
+                    await c.execute(sql)
+                    res = await c.fetchall() # [r[0] for r in await c.fetchall()]   # переделываем список кортежей в простой список
+            # pass
+        except Exception as err:
+            logger.error(f'{err}')
+            res = None
         return res
 
     # Очистка старых log записей

@@ -1,4 +1,4 @@
-﻿from ecom import *
+from ecom import *
 import asyncio
 import selectors
 # from ecom import DatabaseManager
@@ -11,8 +11,9 @@ from dotenv import load_dotenv
 import psycopg
 
 
-logger = logging.getLogger("BatchLogger")
-file_log = logging.getLogger("file_logger")
+# logger = logging.getLogger("BatchLogger")
+# file_log = logging.getLogger("file_logger")
+# db_logger_name=""
 
 
 def get_loop_factory():
@@ -26,6 +27,10 @@ def get_loop_factory():
 # ===============================================================================
 
 async def main():
+    # Инициализация логгера 
+    d_logger = AsyncSplitLogger(db_pool=db_mgr.pool, file_path="./log/fatalerror.log", db_logger_name="", batch_size=10)  # BatchLogger
+    d_logger.start()
+
     # считываем переменные
     env_path = Path(__file__).resolve().parent.parent / '.env'
     load_dotenv(dotenv_path=env_path)
@@ -50,17 +55,25 @@ async def main():
     except psycopg.OperationalError  as err:
         # pass # write fatal error log
         print(f"db_manager: {err}", flush=True)
+        d_logger.error_file(f"Критическая ошибка DatabaseManager: {err}")
+        await d_logger.stop()  # Корректно завершаем воркер перед выходом
         sys.exit(1)
     except Exception as err:
         print(f"db_manager: {err}", flush=True)
-        # pass
+        d_logger.error_file(f"Непредвиденная ошибка DatabaseManager: {err}")
+        await d_logger.stop()
         sys.exit(1)
 
-    await db_mgr.initialize_pool(db_config)
-
-    # Инициализация логгера 
-    d_logger = AsyncSplitLogger(db_pool=db_mgr.pool, file_path="./log/fatalerror.log", db_logger_name="BatchLogger", batch_size=10)
-    d_logger.start()
+    try:
+        d_logger.info_db("Инициализация пула соединений PostgreSQL...")
+        await db_mgr.initialize_pool(db_config)
+        # передаём пул в логгер
+        d_logger.set_pool(db_mgr.pool)
+        d_logger.info_db("Пул соединений успешно инициализирован. Логгер переведен в штатный режим.")
+    except Exception as err:
+        d_logger.error_file(f"Ошибка initialize_pool: {err}")
+        await d_logger.stop()
+        sys.exit(1)
 
 #    file_log.info(f"test2: {db_config}")
 
@@ -83,6 +96,7 @@ async def main():
             cur_df = last_data(api_url, curdate)
             if isinstance(cur_df, pd.DataFrame):
                 logger.info(f'Обработка данных за {curdate.strftime('%Y-%m-%d')}')
+                err_cnt = 0
                 if cur_df.empty:
                     logger.info(f'Нет данных для записи в БД за {curdate.strftime('%Y-%m-%d')}')
                 else:
@@ -93,7 +107,7 @@ async def main():
                     filldata = False
                 else: # считаем ошибки
                     err_cnt += 1
-                    if err_cnt > 10:
+                    if err_cnt > 10:    # выходим если ошибок больше 10
                         filldata = False
 
             curdate -= dt_delta    
@@ -113,12 +127,29 @@ async def main():
                     logger.info(f'начало записи данных в БД за {(x_date - dt_delta).strftime('%Y-%m-%d')}')
                     await db_mgr.write_data(cur_df)
 
+    # проверка пропущенных дат
+    lost_dates = await db_mgr.missing_dates('2022-01-01')
+
+    if lost_dates and isinstance(lost_dates, list):
+        logger.info('Заполнение пропущенных дат')
+        for dt in result:
+            x_date = dt + dt_delta
+            logger.info(f"Начало чтения данных по API за {dt.strftime('%Y-%m-%d')} ")
+            cur_df = last_data(api_url, x_date)
+            if isinstance(cur_df, pd.DataFrame):
+                if cur_df.empty:
+                    logger.info(f'Нет данных для записи в БД за {(x_date - dt_delta).strftime('%Y-%m-%d')}')
+                else:
+                    logger.info(f'начало записи данных в БД за {(x_date - dt_delta).strftime('%Y-%m-%d')}')
+                    await db_mgr.write_data(cur_df)
+
+
     # очистка старых логов
     cln_date = (dt.datetime.now() - cln_days * dt_delta).strftime('%Y-%m-%d')
     await db_mgr.log_cleanup(cln_date)
 
     logger.info(f"{' Завершение работы скрипта ':=^40}")
-    logger.info('====&&&&&&&&&&&&&&&&&&&====')
+    logger.info(f"{'====&&&&&&&&&&&&&&&&&&&====':=^40}")
     
     # Даем время логам записаться перед выходом
     await asyncio.sleep(1)

@@ -109,6 +109,41 @@ select
 FROM generate_series((select min(purchase_datetime)::DATE from $DB_SCHEMA.sales_details), (select max(purchase_datetime)::DATE from $DB_SCHEMA.sales_details), '1 day'::INTERVAL) d;
 
 
+CREATE OR REPLACE VIEW $DB_SCHEMA.v_sales_data
+AS WITH dates AS (
+         SELECT min(sales_details.calendar_date) AS min_date,
+            max(sales_details.calendar_date) AS max_date
+           FROM $DB_SCHEMA.v_calendar sales_details
+        ), periods AS (
+         SELECT g.generated_date::date AS generated_date
+           FROM dates,
+            LATERAL generate_series(dates.min_date::timestamp with time zone, dates.max_date::timestamp with time zone, '1 day'::interval) g(generated_date)
+        ), products AS (
+         SELECT sales_details.product_id
+           FROM $DB_SCHEMA.sales_details
+          WHERE sales_details.quantity > 0
+          GROUP BY sales_details.product_id
+        ), grid AS (
+         SELECT p.product_id,
+            g.generated_date AS purchase_datetime,
+            0 AS ni,
+            0 AS qty
+           FROM products p
+             CROSS JOIN periods g
+        )
+ SELECT grid.product_id,
+    grid.purchase_datetime,
+    grid.ni,
+    grid.qty
+   FROM grid
+UNION ALL
+ SELECT sd.product_id,
+    sd.purchase_datetime,
+    sd.total_price AS ni,
+    sd.quantity AS qty
+   FROM $DB_SCHEMA.sales_details sd
+  WHERE sd.quantity > 0;
+
 GRANT ALL PRIVILEGES ON SCHEMA $DB_SCHEMA TO $APP_USER;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA $DB_SCHEMA TO $APP_USER;
 GRANT USAGE, SELECT,  UPDATE ON ALL SEQUENCES IN SCHEMA $DB_SCHEMA TO $APP_USER;

@@ -1,11 +1,13 @@
-﻿#from .log import *
+#from .log import *
 import requests, json
 import pandas as pd
 import datetime as dt
 import logging
 
-logger = logging.getLogger('BatchLogger')  
-file_log = logging.getLogger("file_logger")
+# logger = logging.getLogger('BatchLogger')  
+# file_log = logging.getLogger("file_logger")
+
+logger = logging.getLogger(__name__)
 
 # get raw api data
 # запрос выдает данные за дату в params.

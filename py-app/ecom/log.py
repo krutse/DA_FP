@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import logging
 from logging.handlers import QueueHandler, RotatingFileHandler
 import queue
@@ -9,7 +9,7 @@ from pathlib import Path
 class AsyncSplitLogger:   # AsyncPsycopgDBLogger
     def __init__(
         self,
-        db_pool,
+        db_pool=None,  # при старте может быть None
         file_path="log/fatalerror.log",
         db_logger_name="db_logger",
         file_logger_name="file_logger",
@@ -19,7 +19,7 @@ class AsyncSplitLogger:   # AsyncPsycopgDBLogger
         """
         :param db_pool: Объект AsyncConnectionPool из библиотеки psycopg_pool
         """
-        self.db_pool = db_pool
+        self.db_pool = db_pool               # можно инициализировать позднее через set_pool когда БД будет готова
         self.batch_size = batch_size
         self.flush_interval = flush_interval
         
@@ -47,6 +47,10 @@ class AsyncSplitLogger:   # AsyncPsycopgDBLogger
 
         self._worker_task = None
         self._loop = None
+
+    def set_pool(self, db_pool):
+        """Метод для динамической инициализации пула, когда БД будет готова."""
+        self.db_pool = db_pool
 
     def start(self):
         """Запуск фонового процесса записи логов в БД."""
@@ -96,9 +100,14 @@ class AsyncSplitLogger:   # AsyncPsycopgDBLogger
                 time_since_flush = time.time() - last_flush_time
                 
                 if len(batch) >= self.batch_size or (time_since_flush >= self.flush_interval and batch):
-                    await self._write_to_db(insert_query, batch)
-                    batch.clear()
-                    last_flush_time = time.time()
+                    # пишем в БД только если пул инициализирован
+                    if self.db_pool is not None:
+                        await self._write_to_db(insert_query, batch)
+                        batch.clear()
+                        last_flush_time = time.time()
+                    else:
+                        # если пула нет оставляем данные в batch
+                        await asyncio.sleep(0.5)
 
         except asyncio.CancelledError:
             # Запись логов из буфера при закрытии приложения
@@ -109,8 +118,10 @@ class AsyncSplitLogger:   # AsyncPsycopgDBLogger
                 except queue.Empty:
                     break
             
-            if batch:
+            if batch and self.db_pool is not None:
                 await self._write_to_db(insert_query, batch)
+            elif batch:
+                print(f"[Logger WARNING] Приложение закрыто, но БД так и не была инициализирована. Потеряно {len(batch)} логов.")
             print("[Logger] Воркер успешно остановлен, логи сохранены .")
 
     async def _write_to_db(self, query, batch_data):
