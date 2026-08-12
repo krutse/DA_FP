@@ -28,7 +28,7 @@ def get_loop_factory():
 
 async def main():
     # Инициализация логгера 
-    d_logger = AsyncSplitLogger(db_pool=db_mgr.pool, file_path="./log/fatalerror.log", db_logger_name="", batch_size=10)  # BatchLogger
+    d_logger = AsyncSplitLogger(db_pool=None, file_path="./log/fatalerror.log", db_logger_name="", batch_size=10)  # BatchLogger
     d_logger.start()
 
     # считываем переменные
@@ -78,7 +78,7 @@ async def main():
 #    file_log.info(f"test2: {db_config}")
 
     # Основной блок 
-    logger.info(f"{'начало работы скрипта':=^40}")
+    d_logger.info_db(f"{'начало работы скрипта':=^40}")
     # проверим наличие данных в таблице, если их нет то надо заполнить
     result = await db_mgr.check_table_data()
     if result:
@@ -90,17 +90,17 @@ async def main():
     df_list = []
     err_cnt = 0
     if  last_date == dt.datetime(1970, 1, 1).date(): 
-        logger.info('Начальное заполнение данными')
+        d_logger.info_db('Начальное заполнение данными')
         filldata = True
         while filldata:
             cur_df = last_data(api_url, curdate)
             if isinstance(cur_df, pd.DataFrame):
-                logger.info(f'Обработка данных за {curdate.strftime('%Y-%m-%d')}')
+                d_logger.info_db(f'Обработка данных за {curdate.strftime('%Y-%m-%d')}')
                 err_cnt = 0
                 if cur_df.empty:
-                    logger.info(f'Нет данных для записи в БД за {curdate.strftime('%Y-%m-%d')}')
+                    d_logger.info_db(f'Нет данных для записи в БД за {curdate.strftime('%Y-%m-%d')}')
                 else:
-                    logger.info(f'начало записи данных в БД за {curdate.strftime('%Y-%m-%d')}')
+                    d_logger.info_db(f'начало записи данных в БД за {curdate.strftime('%Y-%m-%d')}')
                     await db_mgr.write_data(cur_df)
             else:    
                 if cur_df == 'Информация за более ранние периоды отсутствует':
@@ -113,34 +113,34 @@ async def main():
             curdate -= dt_delta    
     else:
         # заполняем данными за прошлый день
-        logger.info('Регулярное заполнение данными')
+        d_logger.info_db('Регулярное заполнение данными')
         d_range = (curdate.date() - last_date).days + 1
         x_date = last_date + dt_delta # день выгрузки данных на last_date
         for i in range(2, d_range):
             x_date += dt_delta # день выгрузки данных за вчера
-            logger.info(f"Начало чтения данных по API за {(x_date - dt_delta).strftime('%Y-%m-%d')} ")
+            d_logger.info_db(f"Начало чтения данных по API за {(x_date - dt_delta).strftime('%Y-%m-%d')} ")
             cur_df = last_data(api_url, x_date)
             if isinstance(cur_df, pd.DataFrame):
                 if cur_df.empty:
-                    logger.info(f'Нет данных для записи в БД за {(x_date - dt_delta).strftime('%Y-%m-%d')}')
+                    d_logger.info_db(f'Нет данных для записи в БД за {(x_date - dt_delta).strftime('%Y-%m-%d')}')
                 else:
-                    logger.info(f'начало записи данных в БД за {(x_date - dt_delta).strftime('%Y-%m-%d')}')
+                    d_logger.info_db(f'начало записи данных в БД за {(x_date - dt_delta).strftime('%Y-%m-%d')}')
                     await db_mgr.write_data(cur_df)
 
     # проверка пропущенных дат
     lost_dates = await db_mgr.missing_dates('2022-01-01')
 
     if lost_dates and isinstance(lost_dates, list):
-        logger.info('Заполнение пропущенных дат')
-        for dt in result:
-            x_date = dt + dt_delta
-            logger.info(f"Начало чтения данных по API за {dt.strftime('%Y-%m-%d')} ")
+        d_logger.info_db('Заполнение пропущенных дат')
+        for date in result:
+            x_date = date + dt_delta
+            d_logger.info_db(f"Начало чтения данных по API за {dt.strftime('%Y-%m-%d')} ")
             cur_df = last_data(api_url, x_date)
             if isinstance(cur_df, pd.DataFrame):
                 if cur_df.empty:
-                    logger.info(f'Нет данных для записи в БД за {(x_date - dt_delta).strftime('%Y-%m-%d')}')
+                    d_logger.info_db(f'Нет данных для записи в БД за {(x_date - dt_delta).strftime('%Y-%m-%d')}')
                 else:
-                    logger.info(f'начало записи данных в БД за {(x_date - dt_delta).strftime('%Y-%m-%d')}')
+                    d_logger.info_db(f'начало записи данных в БД за {(x_date - dt_delta).strftime('%Y-%m-%d')}')
                     await db_mgr.write_data(cur_df)
 
 
@@ -148,8 +148,8 @@ async def main():
     cln_date = (dt.datetime.now() - cln_days * dt_delta).strftime('%Y-%m-%d')
     await db_mgr.log_cleanup(cln_date)
 
-    logger.info(f"{' Завершение работы скрипта ':=^40}")
-    logger.info(f"{'====&&&&&&&&&&&&&&&&&&&====':=^40}")
+    d_logger.info_db(f"{' Завершение работы скрипта ':=^40}")
+    d_logger.info_db(f"{'====&&&&&&&&&&&&&&&&&&&====':=^40}")
     
     # Даем время логам записаться перед выходом
     await asyncio.sleep(1)
