@@ -95,20 +95,23 @@ async def main():
         while filldata:
             cur_df = last_data(api_url, curdate)
             if isinstance(cur_df, pd.DataFrame):
-                d_logger.info_db(f'Обработка данных за {curdate.strftime('%Y-%m-%d')}')
+                ddate = curdate - dt_delta
+                d_logger.info_db(f'Обработка данных за {ddate.strftime('%Y-%m-%d')}')
                 err_cnt = 0
                 if cur_df.empty:
-                    d_logger.info_db(f'Нет данных для записи в БД за {curdate.strftime('%Y-%m-%d')}')
+                    d_logger.info_db(f'Нет данных для записи в БД за {ddate.strftime('%Y-%m-%d')}')
                 else:
-                    d_logger.info_db(f'начало записи данных в БД за {curdate.strftime('%Y-%m-%d')}')
+                    d_logger.info_db(f'начало записи данных в БД за {ddate.strftime('%Y-%m-%d')}')
                     await db_mgr.write_data(cur_df)
             else:    
                 if cur_df == 'Информация за более ранние периоды отсутствует':
                     filldata = False
+                    d_logger.info_db('Завершение начального заполнения данными')
                 else: # считаем ошибки
                     err_cnt += 1
                     if err_cnt > 10:    # выходим если ошибок больше 10
                         filldata = False
+                        d_logger.warning_db('Превышение ошибок чтения - Завершение начального заполнения данными')
 
             curdate -= dt_delta    
     else:
@@ -134,13 +137,13 @@ async def main():
         d_logger.info_db('Заполнение пропущенных дат')
         for date in result:
             x_date = date + dt_delta
-            d_logger.info_db(f"Начало чтения данных по API за {dt.strftime('%Y-%m-%d')} ")
+            d_logger.info_db(f"Начало чтения данных по API за {date.strftime('%Y-%m-%d')} ")
             cur_df = last_data(api_url, x_date)
             if isinstance(cur_df, pd.DataFrame):
                 if cur_df.empty:
-                    d_logger.info_db(f'Нет данных для записи в БД за {(x_date - dt_delta).strftime('%Y-%m-%d')}')
+                    d_logger.info_db(f'Нет данных для записи в БД за {date.strftime('%Y-%m-%d')}')
                 else:
-                    d_logger.info_db(f'начало записи данных в БД за {(x_date - dt_delta).strftime('%Y-%m-%d')}')
+                    d_logger.info_db(f'начало записи данных в БД за {date.strftime('%Y-%m-%d')}')
                     await db_mgr.write_data(cur_df)
 
 

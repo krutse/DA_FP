@@ -12,7 +12,7 @@ APP_DB=ecom #<имя БД с данными продаж>
 DB_SCHEMA=ecom #<схема для БД с данными продаж>
 
 # Metabase настройки
-METABASE_DB=<имя БД для metabase>
+METABASE_DB=metabase_db # <имя БД для metabase>
 METABASE_PORT=13000  # порт metabase для подключения снаружи контейнера
 
 # Python приложение
