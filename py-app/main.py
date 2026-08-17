@@ -135,7 +135,7 @@ async def main():
 
     if lost_dates and isinstance(lost_dates, list):
         d_logger.info_db('Заполнение пропущенных дат')
-        for date in result:
+        for date in lost_dates:
             x_date = date + dt_delta
             d_logger.info_db(f"Начало чтения данных по API за {date.strftime('%Y-%m-%d')} ")
             cur_df = last_data(api_url, x_date)

@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # запрос выдает данные за дату в params.
 def get_data(url,params):
     try:
-        rsp = requests.get(url,params=params, timeout=10)
+        rsp = requests.get(url,params=params, timeout=(5,30))
         rsp.raise_for_status() 
         return rsp #.json()
     except requests.exceptions.HTTPError as err:
